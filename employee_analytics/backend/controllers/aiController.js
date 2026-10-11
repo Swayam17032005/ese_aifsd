@@ -22,6 +22,10 @@ exports.getRecommendations = async (req, res) => {
         return res.status(404).json({ success: false, message: 'No employees found to analyze' });
     }
 
+    if (!process.env.OPENROUTER_API_KEY) {
+      return res.status(503).json({ success: false, message: 'AI recommendations are not configured' });
+    }
+
     // Format data for prompt
     const employeeDataStr = employees.map(emp => {
         return `Name: ${emp.name}, Dept: ${emp.department}, Skills: ${emp.skills.join(', ')}, Score: ${emp.performanceScore}/100, Exp: ${emp.experience} yrs`;
@@ -80,28 +84,10 @@ Return ONLY valid JSON. No markdown formatting like \`\`\`json.`;
     res.json({ success: true, data: jsonOutput });
   } catch (error) {
     console.error('AI Error:', error.response ? error.response.data : error.message);
-    
-    // Fallback to mock data if OpenRouter is rate-limited or fails
-    console.log("Falling back to mock AI recommendations due to API failure.");
-    const mockData = {
-      promotions: [
-        { name: "John Doe", reason: "Consistently exceeds performance targets and shows great leadership." }
-      ],
-      improvementFeedback: [
-        { name: "Jane Smith", feedback: "Needs to improve technical skills. Recommend advanced training courses." }
-      ],
-      trainingSuggestions: [
-        { name: "Alice Johnson", suggestions: "Cloud architecture certification." },
-        { name: "Bob Brown", suggestions: "Communication and soft skills workshop." }
-      ],
-      ranking: [
-        { name: "John Doe", score: 95 },
-        { name: "Alice Johnson", score: 88 },
-        { name: "Bob Brown", score: 76 },
-        { name: "Jane Smith", score: 55 }
-      ]
-    };
-    
-    return res.json({ success: true, data: mockData, isMock: true });
+
+    return res.status(502).json({
+      success: false,
+      message: error.response ? 'AI provider request failed' : 'Unable to generate AI recommendations'
+    });
   }
 };
